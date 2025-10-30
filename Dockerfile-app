@@ -1,0 +1,30 @@
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /go/src/github.com/21ess/animemaster
+COPY . .
+
+RUN apk --no-cache add tzdata \
+    && go env -w GO111MODULE=on \
+    && go env -w GOPROXY=https://goproxy.cn,direct \
+    && go env -w CGO_ENABLED=0 \
+    && go env \
+    && go mod tidy \
+    && go build -o animemaster ./cmd/main.go
+
+FROM alpine:3.22 AS final
+
+# 创建非 root 用户
+RUN addgroup -S devgroup && adduser -S dev -G devgroup
+
+WORKDIR /go/src/github.com/21ess/animemaster
+RUN chown -R dev:dev /go/src/github.com/21ess/animemaster
+# 复制执行文件 环境变量 配置文件
+COPY --from=builder /go/src/github.com/21ess/animemaster/animemaster ./
+COPY --from=builder /go/src/github.com/21ess/animemaster/config ./config/
+COPY --from=builder /go/src/github.com/21ess/animemaster/.env ./
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+ENV TZ=Asia/Shanghai
+
+EXPOSE 8080
+USER dev
+ENTRYPOINT ["./animemaster"]

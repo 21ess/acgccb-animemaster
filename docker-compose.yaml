@@ -1,0 +1,71 @@
+version: "3"
+
+services:
+#  app:
+#    build:
+#      context: ./
+#      dockerfile: Dockerfile-app
+#    container_name: animemaster-app
+#    restart: always
+#    ports:
+#      -  "8080:8080"
+#    volumes:
+#      - ./data:/go/src/github.com/21ess/animemaster/data
+#    depends_on:
+#      - mongo
+#      - redis
+#    networks:
+#      - dev-net
+  mongo:
+    build:
+      context: ./
+      dockerfile: Dockerfile-mongo
+    container_name: animemaster-mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER:-admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASS:-password}
+      - TZ=Asia/Shanghai
+    env_file:
+      - .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - dev-net
+    restart: always
+#    healthcheck:
+#      test: |
+#        bash -c '
+#          mongosh --host localhost --username $$MONGO_INITDB_ROOT_USERNAME \
+#                  --password $$MONGO_INITDB_ROOT_PASSWORD --eval "db.adminCommand(''ping'')" \
+#                  && exit 0 || exit 1
+#        '
+  redis:
+    build:
+      context: ./
+      dockerfile: Dockerfile-redis
+    container_name: animemaster-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}"]
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - TZ=Asia/Shanghai
+    env_file:
+      - .env
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - dev-net
+    restart: always
+#    healthcheck:
+#      test: ["CMD", "redis-cli", "--raw", "ping"]
+
+networks:
+  dev-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
